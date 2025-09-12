@@ -1,0 +1,13 @@
+## Environment Setup
+- Download Anaconda Dristro
+- Set up a virtual environment with conda using python 3.9:
+  - `conda create -n seagrass python=3.9`
+  - `conda activate seagrass`
+- Set up pytorch with GPU accel:
+  - `conda install pytorch torchvision pytorch-cuda=11.8 -c pytorch -c nvidia`
+- Everything else:
+  - `pip install lightning torchmetrics optuna ray[tune] tensorboard`
+  - `pip install pandas pillow scikit-learn matplotlib seaborn plotly`
+  - `pip install python-dotenv tqdm`
+  - `pip install tensorflow`
+- If using jupyter: `pip install -U ipywidgets`
