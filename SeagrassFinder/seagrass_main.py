@@ -4,7 +4,7 @@ Training module for seagrass image recognition.
 
 next step: tuning hyperparams.
 """
-
+import torch
 
 from training import train_seagrass_model
 import os

@@ -7,12 +7,10 @@ import pandas as pd
 import torchvision
 import torchvision.models as models
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryCalibrationError
 from lightning.pytorch.loggers import TensorBoardLogger
 from datetime import datetime
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from ray.tune.integration.pytorch_lightning import TuneReportCheckpointCallback
 import multiprocessing
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image
@@ -58,10 +56,7 @@ def train_seagrass_model(model_name, batch_size, learning_rate, max_epochs,
     # ... other models
 
     # 3. Lightning Setup
-    lit_model = SeagrassLightningModule(
-        model, model_name, train_data, val_data, test_data,
-        batch_size=batch_size, learning_rate=learning_rate
-    )
+    lit_model = SeagrassLightningModule(model, learning_rate=learning_rate)
 
     dm = SeagrassDataModule(train_df=train_data,
                         val_df=val_data,
@@ -75,7 +70,6 @@ def train_seagrass_model(model_name, batch_size, learning_rate, max_epochs,
         logger=TensorBoardLogger('logs', name=f'{model_name}-{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}'),
         callbacks=[
             EarlyStopping(monitor="val_loss", patience=5),
-            TuneReportCheckpointCallback(metrics={"loss": "val_loss", "accuracy": "val_acc"})
         ],
         devices=1,
         accelerator="gpu"

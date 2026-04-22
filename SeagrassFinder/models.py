@@ -7,7 +7,6 @@ import pandas as pd
 import torchvision
 import torchvision.models as models
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryCalibrationError
 from lightning.pytorch.loggers import TensorBoardLogger
 from datetime import datetime
@@ -71,5 +70,10 @@ class ViTSeagrass(nn.Module):
             nn.Linear(second_last_layer_size, last_layer_size),
             nn.ReLU(),
             nn.Linear(last_layer_size, 1),
-            nn.Sigmoid()
+            #nn.Sigmoid()
         )
+
+    def forward(self, x):
+        features = self.backbone(x)
+        out = self.classifier(features)
+        return out.squeeze(1)

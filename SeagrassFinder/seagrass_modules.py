@@ -7,7 +7,6 @@ import pandas as pd
 import torchvision
 import torchvision.models as models
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryCalibrationError
 from lightning.pytorch.loggers import TensorBoardLogger
 from datetime import datetime
@@ -18,9 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 
 class SeagrassLightningModule(pl.LightningModule):
-    def __init__(self, model, model_name, train_data, val_data=None, 
-                 test_data=None, learning_rate=1e-5, batch_size=128, 
-                 second_last_layer_size=1024, last_layer_size=128):
+    def __init__(self, model, learning_rate=1e-5):
         super().__init__()
         self.model = model
         self.learning_rate = learning_rate
@@ -28,10 +25,16 @@ class SeagrassLightningModule(pl.LightningModule):
 
         # Metrics
         self.accuracy = BinaryAccuracy(threshold=0.5)
-        self.auc = BinaryAUROC()
-        self.calibration_error = BinaryCalibrationError(n_bins=5)
         self.val_acc = BinaryAccuracy()
         self.test_acc = BinaryAccuracy()
+
+        self.auc = BinaryAUROC()
+        self.val_auc = BinaryAUROC()
+        self.test_auc = BinaryAUROC()
+
+        self.calibration_error = BinaryCalibrationError(n_bins=5)
+        self.val_cal_error = BinaryCalibrationError(n_bins=5)
+        self.test_cal_error = BinaryCalibrationError(n_bins=5)
 
     def forward(self, x):
         return self.model(x)
@@ -40,8 +43,12 @@ class SeagrassLightningModule(pl.LightningModule):
         x, y = batch
         logits = self(x)
         loss = self.loss(logits, y.float())
-
         preds = torch.sigmoid(logits)
+
+        self.accuracy.update(preds, y.int())
+        self.auc.update(preds, y.int())
+        self.calibration_error.update(preds, y.int())
+        
         self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train_acc", self.accuracy(preds, y.int()), on_epoch=True, prog_bar=True)
         self.log("train_auc", self.auc(preds, y.int()), on_epoch=True, prog_bar=True)
@@ -55,9 +62,13 @@ class SeagrassLightningModule(pl.LightningModule):
         preds = torch.sigmoid(logits)
 
         self.val_acc.update(preds, y.int())
+        self.val_auc.update(preds, y.int())
+        self.val_cal_error.update(preds, y.int())
     
         self.log("val_loss", loss, on_step=False, prog_bar=True, on_epoch=True)
         self.log("val_acc", self.val_acc, on_step = False, prog_bar=True, on_epoch=True)
+        self.log("val_auc", self.val_auc, on_step=False, prog_bar=True, on_epoch=True)
+        self.log("val_cal_error", self.val_cal_error, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -66,11 +77,15 @@ class SeagrassLightningModule(pl.LightningModule):
         preds = torch.sigmoid(logits)
 
         self.test_acc.update(preds, y.int())
+        self.test_auc.update(preds, y.int())
+        self.test_cal_error.update(preds, y.int())
+
         self.log("test_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test_acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test_auc",self.test_auc,on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test_cal_error", self.test_cal_error, on_step=False, on_epoch=True, prog_bar=True)
 
     def configure_optimizers(self):
-        """Adam optimizer with configurable learning rate."""
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
 
